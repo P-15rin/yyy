@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f131a" />
+  <meta name="description" content="オーバーウォッチのタンク・ダメージ・サポートをロール別に表示し、キャラクターごとのカウントと合計を端末に保存できるスマホ対応Webアプリ" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="OW Counter" />
+  <title>OW Counter Mobile</title>
+  <style>
+    :root {
+      --bg: #0f131a;
+      --panel: #171c25;
+      --panel2: #202735;
+      --text: #f5f7fa;
+      --muted: #aeb8c6;
+      --line: #343d4d;
+      --accent: #f29b38;
+      --accent2: #ffb14c;
+      --danger: #ff6b7b;
+      --success: #49d39d;
+      --shadow: 0 16px 45px rgba(0,0,0,.28);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--bg); -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      background:
+        radial-gradient(circle at 80% -10%, rgba(242,155,56,.16), transparent 30rem),
+        radial-gradient(circle at -10% 30%, rgba(80,116,184,.11), transparent 27rem),
+        var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      padding:
+        max(12px, var(--safe-top))
+        max(12px, var(--safe-right))
+        max(28px, var(--safe-bottom))
+        max(12px, var(--safe-left));
+      overscroll-behavior-y: contain;
+    }
+
+    button, input { font: inherit; }
+    button {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    .app { width: min(780px, 100%); margin: 0 auto; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 2px 2px 12px;
+    }
+    .title-wrap h1 { margin: 0; font-size: clamp(21px, 5vw, 32px); letter-spacing: -.035em; }
+    .title-wrap p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .status-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .status-dot::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 4px rgba(73,211,157,.1);
+    }
+
+    .panel {
+      background: rgba(23, 28, 37, .95);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .role-tabs-wrap {
+      position: sticky;
+      top: max(7px, var(--safe-top));
+      z-index: 20;
+      margin-bottom: 12px;
+      padding: 4px;
+      border-radius: 16px;
+      background: rgba(15,19,26,.86);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .role-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      padding: 4px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      background: rgba(23,28,37,.92);
+    }
+    .role-tab {
+      min-height: 44px;
+      border: 0;
+      border-radius: 11px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .role-tab[aria-selected="true"] {
+      background: var(--accent);
+      color: #1d1308;
+    }
+    .role-tab small {
+      display: block;
+      margin-top: 1px;
+      font-size: 9px;
+      opacity: .72;
+      font-weight: 700;
+    }
+
+    .hero-panel { padding: 14px; }
+    .selected {
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+    }
+    .portrait-wrap {
+      aspect-ratio: 1;
+      border-radius: 17px;
+      overflow: hidden;
+      background: linear-gradient(145deg, #2d3543, #151a22);
+      border: 1px solid rgba(255,255,255,.12);
+      position: relative;
+    }
+    .portrait-wrap img { width: 100%; height: 100%; display: block; object-fit: cover; }
+    .portrait-fallback {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 34px;
+      font-weight: 900;
+      color: #dfe5ee;
+    }
+    .selected-info { min-width: 0; }
+    .role-label {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(242,155,56,.13);
+      color: #ffc479;
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: .08em;
+    }
+    .selected-name {
+      margin: 7px 0 10px;
+      font-size: clamp(20px, 6vw, 33px);
+      font-weight: 900;
+      line-height: 1.04;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .counter {
+      display: grid;
+      grid-template-columns: 50px minmax(72px, 1fr) 50px;
+      gap: 8px;
+      align-items: center;
+    }
+    .counter button,
+    .counter-value {
+      height: 50px;
+      border-radius: 14px;
+    }
+    .counter button {
+      border: 0;
+      font-size: 27px;
+      font-weight: 600;
+      color: var(--text);
+      background: var(--panel2);
+      cursor: pointer;
+      transition: transform .08s ease, background .15s ease;
+    }
+    .counter button:active { transform: scale(.94); }
+    .counter .plus { background: var(--accent); color: #16110b; font-weight: 900; }
+    .counter-value {
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #10151d;
+      font-size: 28px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 18px 2px 9px;
+    }
+    .section-head h2 { margin: 0; font-size: 15px; }
+    .section-head span { color: var(--muted); font-size: 11px; }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 7px;
+    }
+    .hero-btn {
+      min-width: 0;
+      aspect-ratio: 1;
+      border: 1px solid rgba(255,255,255,.09);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 6px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .15s ease, transform .08s ease, background .15s ease;
+    }
+    .hero-btn:active { transform: scale(.95); }
+    .hero-btn.active {
+      border-color: var(--accent);
+      background: rgba(242,155,56,.11);
+      box-shadow: inset 0 0 0 1px rgba(242,155,56,.22);
+    }
+    .hero-thumb {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      border-radius: 9px;
+      background: #252d3a;
+      position: relative;
+    }
+    .hero-thumb img { width: 100%; height: 100%; display: block; object-fit: cover; }
+    .thumb-fallback {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      color: #dce2ea;
+      font-size: clamp(15px, 5vw, 25px);
+    }
+    .badge {
+      position: absolute;
+      right: 4px;
+      top: 4px;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 5px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #191109;
+      font-size: 10px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      box-shadow: 0 3px 10px rgba(0,0,0,.35);
+    }
+    .badge[hidden] { display: none; }
+
+    .total-panel {
+      margin-top: 15px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 16px;
+    }
+    .total-label { color: var(--muted); font-size: 12px; }
+    .total-number {
+      font-size: clamp(36px, 10vw, 58px);
+      font-weight: 900;
+      letter-spacing: -.04em;
+      font-variant-numeric: tabular-nums;
+    }
+    .sub-total { margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .last-save { color: var(--muted); font-size: 10px; margin-top: 4px; }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-top: 14px;
+    }
+    .action-btn {
+      min-height: 48px;
+      border-radius: 13px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      padding: 10px 12px;
+      font-weight: 750;
+      font-size: 13px;
+    }
+    .action-btn.primary { background: var(--accent); color: #1b1208; border-color: transparent; }
+    .action-btn.danger { color: #ff9ca7; }
+    .action-btn:active { transform: scale(.98); }
+    .action-btn:disabled { opacity: .55; cursor: wait; }
+
+    .breakdown { margin-top: 14px; padding: 16px; }
+    .breakdown h2 { margin: 0 0 10px; font-size: 14px; }
+    .breakdown-empty { color: var(--muted); font-size: 12px; }
+    .breakdown-list { display: grid; gap: 6px; }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: #111720;
+      font-size: 12px;
+    }
+    .row strong { font-variant-numeric: tabular-nums; }
+
+    .footnote {
+      margin: 16px 4px 0;
+      color: #8893a2;
+      font-size: 10px;
+      line-height: 1.65;
+    }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: max(20px, var(--safe-bottom));
+      transform: translate(-50%, 18px);
+      opacity: 0;
+      pointer-events: none;
+      background: #edf2f7;
+      color: #111722;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 800;
+      transition: .22s ease;
+      box-shadow: 0 10px 30px rgba(0,0,0,.3);
+      z-index: 50;
+      white-space: nowrap;
+      max-width: calc(100vw - 24px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .hidden-input { display: none; }
+
+    @media (max-width: 430px) {
+      .status-dot { display: none; }
+      .selected { grid-template-columns: 96px minmax(0, 1fr); gap: 12px; }
+      .hero-panel { padding: 12px; }
+      .counter { grid-template-columns: 46px minmax(60px, 1fr) 46px; gap: 7px; }
+      .counter button, .counter-value { height: 46px; }
+      .counter button { font-size: 25px; }
+      .counter-value { font-size: 24px; }
+    }
+    @media (max-width: 359px) {
+      .selected { grid-template-columns: 82px minmax(0, 1fr); gap: 10px; }
+      .hero-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .role-tab { font-size: 11px; }
+      .actions { grid-template-columns: 1fr; }
+    }
+    @media (min-width: 600px) {
+      .hero-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 9px; }
+      .selected { grid-template-columns: 124px minmax(0, 1fr); gap: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="topbar">
+      <div class="title-wrap">
+        <h1>OW Role Counter</h1>
+        <p>タップしてすぐ使える・ロール別カウンター</p>
+      </div>
+      <div class="status-dot" id="rosterStatus">内蔵一覧</div>
+    </div>
+
+    <div class="role-tabs-wrap">
+      <nav class="role-tabs" aria-label="ロール切り替え">
+        <button class="role-tab" type="button" data-role="tank" aria-selected="true">タンク<small id="tankTabCount">0</small></button>
+        <button class="role-tab" type="button" data-role="damage" aria-selected="false">ダメージ<small id="damageTabCount">0</small></button>
+        <button class="role-tab" type="button" data-role="support" aria-selected="false">サポート<small id="supportTabCount">0</small></button>
+      </nav>
+    </div>
+
+    <section class="panel hero-panel" aria-label="選択中のヒーロー">
+      <div class="selected">
+        <div class="portrait-wrap">
+          <div class="portrait-fallback" id="selectedFallback">D</div>
+          <img id="selectedPortrait" alt="" hidden />
+        </div>
+        <div class="selected-info">
+          <div class="role-label" id="selectedRoleLabel">TANK</div>
+          <div class="selected-name" id="selectedName">D.Va</div>
+          <div class="counter" aria-label="カウント操作">
+            <button class="minus" id="minusBtn" type="button" aria-label="1減らす">−</button>
+            <div class="counter-value" id="selectedCount" aria-live="polite">0</div>
+            <button class="plus" id="plusBtn" type="button" aria-label="1増やす">＋</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-head">
+      <h2 id="listHeading">タンク</h2>
+      <span id="sourceText">フォールバック一覧</span>
+    </div>
+    <section class="hero-grid" id="heroGrid" aria-label="ヒーロー一覧"></section>
+
+    <section class="panel total-panel" aria-label="合計">
+      <div>
+        <div class="total-label" id="totalLabel">タンク合計</div>
+        <div class="sub-total" id="allTotal">全ロール合計 0</div>
+        <div class="last-save" id="lastSave">未保存</div>
+      </div>
+      <div class="total-number" id="totalCount">0</div>
+    </section>
+
+    <div class="actions">
+      <button class="action-btn primary" id="saveBtn" type="button">保存</button>
+      <button class="action-btn" id="refreshBtn" type="button">ヒーロー情報を更新</button>
+      <button class="action-btn" id="exportBtn" type="button">JSONを書き出す</button>
+      <button class="action-btn" id="importBtn" type="button">JSONを読み込む</button>
+      <button class="action-btn danger" id="resetBtn" type="button">カウントをリセット</button>
+    </div>
+    <input class="hidden-input" type="file" id="importInput" accept="application/json,.json" />
+
+    <section class="panel breakdown">
+      <h2 id="breakdownHeading">タンク内訳</h2>
+      <div id="breakdown"></div>
+    </section>
+
+    <p class="footnote">
+      このHTMLファイル1つだけで起動できます。キャラ一覧はアイコンのみ表示し、名前は選択後の上部パネルと内訳だけに表示します。ブラウザで開いた場合、カウントは端末内に自動保存されます。オンライン時はヒーロー一覧とポートレートを更新し、取得できない場合は内蔵一覧を使用します。
+    </p>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    // 単体HTMLを file:// やアプリ内ブラウザで開いた場合でも、
+    // localStorage が利用不可ならメモリ保存へ自動フォールバックする。
+    const memoryStorage = new Map();
+    const safeStorage = {
+      getItem(key) {
+        try { return window.safeStorage.getItem(key); }
+        catch (_) { return memoryStorage.has(key) ? memoryStorage.get(key) : null; }
+      },
+      setItem(key, value) {
+        try { window.safeStorage.setItem(key, value); }
+        catch (_) { memoryStorage.set(key, String(value)); }
+      },
+      removeItem(key) {
+        try { window.safeStorage.removeItem(key); }
+        catch (_) { memoryStorage.delete(key); }
+      }
+    };
+
+    const FALLBACK_ROSTER = [
+      // Tank (15)
+      { key: 'dmon', name: 'D.Mon', role: 'tank' },
+      { key: 'domina', name: 'Domina', role: 'tank' },
+      { key: 'doomfist', name: 'Doomfist', role: 'tank' },
+      { key: 'dva', name: 'D.Va', role: 'tank' },
+      { key: 'hazard', name: 'Hazard', role: 'tank' },
+      { key: 'junker-queen', name: 'Junker Queen', role: 'tank' },
+      { key: 'mauga', name: 'Mauga', role: 'tank' },
+      { key: 'orisa', name: 'Orisa', role: 'tank' },
+      { key: 'ramattra', name: 'Ramattra', role: 'tank' },
+      { key: 'reinhardt', name: 'Reinhardt', role: 'tank' },
+      { key: 'roadhog', name: 'Roadhog', role: 'tank' },
+      { key: 'sigma', name: 'Sigma', role: 'tank' },
+      { key: 'winston', name: 'Winston', role: 'tank' },
+      { key: 'wrecking-ball', name: 'Wrecking Ball', role: 'tank' },
+      { key: 'zarya', name: 'Zarya', role: 'tank' },
+
+      // Damage (24)
+      { key: 'anran', name: 'Anran', role: 'damage' },
+      { key: 'ashe', name: 'Ashe', role: 'damage' },
+      { key: 'bastion', name: 'Bastion', role: 'damage' },
+      { key: 'cassidy', name: 'Cassidy', role: 'damage' },
+      { key: 'echo', name: 'Echo', role: 'damage' },
+      { key: 'emre', name: 'Emre', role: 'damage' },
+      { key: 'freja', name: 'Freja', role: 'damage' },
+      { key: 'genji', name: 'Genji', role: 'damage' },
+      { key: 'hanzo', name: 'Hanzo', role: 'damage' },
+      { key: 'junkrat', name: 'Junkrat', role: 'damage' },
+      { key: 'mei', name: 'Mei', role: 'damage' },
+      { key: 'pharah', name: 'Pharah', role: 'damage' },
+      { key: 'reaper', name: 'Reaper', role: 'damage' },
+      { key: 'shion', name: 'Shion', role: 'damage' },
+      { key: 'sierra', name: 'Sierra', role: 'damage' },
+      { key: 'sojourn', name: 'Sojourn', role: 'damage' },
+      { key: 'soldier-76', name: 'Soldier: 76', role: 'damage' },
+      { key: 'sombra', name: 'Sombra', role: 'damage' },
+      { key: 'symmetra', name: 'Symmetra', role: 'damage' },
+      { key: 'torbjorn', name: 'Torbjörn', role: 'damage' },
+      { key: 'tracer', name: 'Tracer', role: 'damage' },
+      { key: 'vendetta', name: 'Vendetta', role: 'damage' },
+      { key: 'venture', name: 'Venture', role: 'damage' },
+      { key: 'widowmaker', name: 'Widowmaker', role: 'damage' },
+
+      // Support (14)
+      { key: 'ana', name: 'Ana', role: 'support' },
+      { key: 'baptiste', name: 'Baptiste', role: 'support' },
+      { key: 'brigitte', name: 'Brigitte', role: 'support' },
+      { key: 'illari', name: 'Illari', role: 'support' },
+      { key: 'jetpack-cat', name: 'Jetpack Cat', role: 'support' },
+      { key: 'juno', name: 'Juno', role: 'support' },
+      { key: 'kiriko', name: 'Kiriko', role: 'support' },
+      { key: 'lifeweaver', name: 'Lifeweaver', role: 'support' },
+      { key: 'lucio', name: 'Lúcio', role: 'support' },
+      { key: 'mercy', name: 'Mercy', role: 'support' },
+      { key: 'mizuki', name: 'Mizuki', role: 'support' },
+      { key: 'moira', name: 'Moira', role: 'support' },
+      { key: 'wuyang', name: 'Wuyang', role: 'support' },
+      { key: 'zenyatta', name: 'Zenyatta', role: 'support' }
+    ];
+
+    const JP_NAMES = {
+      dva: 'D.Va', dmon: 'D.Mon', domina: 'ドミナ', doomfist: 'ドゥームフィスト', hazard: 'ハザード',
+      'junker-queen': 'ジャンカー・クイーン', mauga: 'マウガ', orisa: 'オリーサ', ramattra: 'ラマットラ',
+      reinhardt: 'ラインハルト', roadhog: 'ロードホッグ', sigma: 'シグマ', winston: 'ウィンストン',
+      'wrecking-ball': 'レッキング・ボール', zarya: 'ザリア',
+      anran: 'アンラン', ashe: 'アッシュ', bastion: 'バスティオン', cassidy: 'キャスディ', echo: 'エコー',
+      emre: 'エムレ', genji: 'ゲンジ', hanzo: 'ハンゾー', junkrat: 'ジャンクラット', mei: 'メイ',
+      pharah: 'ファラ', reaper: 'リーパー', sojourn: 'ソジョーン', 'soldier-76': 'ソルジャー76',
+      sombra: 'ソンブラ', symmetra: 'シンメトラ', torbjorn: 'トールビョーン', tracer: 'トレーサー',
+      venture: 'ベンチャー', widowmaker: 'ウィドウメイカー',
+      ana: 'アナ', baptiste: 'バティスト', brigitte: 'ブリギッテ', illari: 'イラリー',
+      'jetpack-cat': 'ジェットパック・キャット', juno: 'ジュノ', kiriko: 'キリコ', lifeweaver: 'ライフウィーバー',
+      lucio: 'ルシオ', mercy: 'マーシー', mizuki: 'ミズキ', moira: 'モイラ', wuyang: 'ウーヤン', zenyatta: 'ゼニヤッタ'
+    };
+
+    const ROLE_META = {
+      tank: { label: 'タンク', short: 'TANK' },
+      damage: { label: 'ダメージ', short: 'DAMAGE' },
+      support: { label: 'サポート', short: 'SUPPORT' }
+    };
+
+    const STORAGE_KEY = 'ow-role-counter-v2';
+    const OLD_STORAGE_KEY = 'ow-tank-counter-v1';
+    const ROSTER_KEY = 'ow-role-counter-roster-v2';
+    const API_URL = 'https://overfast-api.tekrop.fr/heroes';
+
+    let roster = loadCachedRoster() || FALLBACK_ROSTER;
+    let selectedRole = 'tank';
+    let selectedByRole = { tank: 'dva', damage: 'tracer', support: 'ana' };
+    let counts = {};
+    let lastSavedAt = null;
+
+    const $ = (id) => document.getElementById(id);
+    const els = {
+      heroGrid: $('heroGrid'),
+      selectedName: $('selectedName'),
+      selectedPortrait: $('selectedPortrait'),
+      selectedFallback: $('selectedFallback'),
+      selectedRoleLabel: $('selectedRoleLabel'),
+      selectedCount: $('selectedCount'),
+      totalCount: $('totalCount'),
+      totalLabel: $('totalLabel'),
+      allTotal: $('allTotal'),
+      breakdown: $('breakdown'),
+      breakdownHeading: $('breakdownHeading'),
+      listHeading: $('listHeading'),
+      lastSave: $('lastSave'),
+      toast: $('toast'),
+      rosterStatus: $('rosterStatus'),
+      sourceText: $('sourceText'),
+      importInput: $('importInput'),
+      tankTabCount: $('tankTabCount'),
+      damageTabCount: $('damageTabCount'),
+      supportTabCount: $('supportTabCount')
+    };
+
+    function normalizedKey(value = '') {
+      return String(value).toLowerCase().trim().replace(/\./g, '').replace(/_/g, '-').replace(/\s+/g, '-');
+    }
+
+    function normalizedRole(value = '') {
+      const role = String(value).toLowerCase().trim();
+      return ['tank', 'damage', 'support'].includes(role) ? role : '';
+    }
+
+    function initials(name) {
+      if (!name) return '?';
+      if (/^[\x00-\x7FÀ-ÿ]+$/.test(name)) {
+        return name.split(/[\s.:-]+/).filter(Boolean).map(x => x[0]).join('').slice(0, 2).toUpperCase();
+      }
+      return name.slice(0, 1);
+    }
+
+    function getName(hero) {
+      return JP_NAMES[normalizedKey(hero.key)] || hero.name || hero.key;
+    }
+
+    function roleHeroes(role = selectedRole) {
+      return roster.filter(h => h.role === role);
+    }
+
+    function loadState() {
+      try {
+        const raw = safeStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            counts = parsed.counts && typeof parsed.counts === 'object' ? parsed.counts : {};
+            selectedRole = normalizedRole(parsed.selectedRole) || selectedRole;
+            if (parsed.selectedByRole && typeof parsed.selectedByRole === 'object') {
+              selectedByRole = { ...selectedByRole, ...parsed.selectedByRole };
+            }
+            lastSavedAt = parsed.savedAt || null;
+            return;
+          }
+        }
+
+        // v1（タンク専用版）のカウントを自動移行
+        const oldRaw = safeStorage.getItem(OLD_STORAGE_KEY);
+        if (!oldRaw) return;
+        const old = JSON.parse(oldRaw);
+        if (old && typeof old === 'object') {
+          counts = old.counts && typeof old.counts === 'object' ? old.counts : {};
+          if (old.selectedKey) selectedByRole.tank = normalizedKey(old.selectedKey);
+          lastSavedAt = old.savedAt || null;
+        }
+      } catch (_) {}
+    }
+
+    function loadCachedRoster() {
+      try {
+        const raw = safeStorage.getItem(ROSTER_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (!Array.isArray(data) || !data.length) return null;
+        const clean = data
+          .map(h => ({
+            key: normalizedKey(h.key || h.name),
+            name: h.name || h.key,
+            role: normalizedRole(h.role),
+            portrait: h.portrait || ''
+          }))
+          .filter(h => h.key && h.role);
+        return clean.length ? clean : null;
+      } catch (_) { return null; }
+    }
+
+    function save({ toast = false } = {}) {
+      const now = new Date().toISOString();
+      lastSavedAt = now;
+      safeStorage.setItem(STORAGE_KEY, JSON.stringify({
+        version: 2,
+        counts,
+        selectedRole,
+        selectedByRole,
+        savedAt: now
+      }));
+      renderMeta();
+      if (toast) showToast('保存しました');
+    }
+
+    function autoSave() { save({ toast: false }); }
+
+    function ensureSelections() {
+      for (const role of Object.keys(ROLE_META)) {
+        const list = roleHeroes(role);
+        if (!list.length) continue;
+        if (!list.some(h => h.key === selectedByRole[role])) selectedByRole[role] = list[0].key;
+      }
+      if (!roleHeroes(selectedRole).length) selectedRole = 'tank';
+    }
+
+    function selectedHero() {
+      const list = roleHeroes(selectedRole);
+      return list.find(h => h.key === selectedByRole[selectedRole]) || list[0] || FALLBACK_ROSTER[0];
+    }
+
+    function getCount(key) {
+      const n = Number(counts[key] || 0);
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+    }
+
+    function changeCount(delta) {
+      const hero = selectedHero();
+      if (!hero) return;
+      counts[hero.key] = Math.max(0, getCount(hero.key) + delta);
+      if (counts[hero.key] === 0) delete counts[hero.key];
+      autoSave();
+      render();
+    }
+
+    function selectHero(key) {
+      selectedByRole[selectedRole] = key;
+      autoSave();
+      render();
+    }
+
+    function switchRole(role) {
+      if (!ROLE_META[role]) return;
+      selectedRole = role;
+      ensureSelections();
+      autoSave();
+      render();
+      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    }
+
+    function roleTotal(role = selectedRole) {
+      return roleHeroes(role).reduce((sum, hero) => sum + getCount(hero.key), 0);
+    }
+
+    function grandTotal() {
+      return roster.reduce((sum, hero) => sum + getCount(hero.key), 0);
+    }
+
+    function setupImage(img, fallbackEl, hero) {
+      fallbackEl.textContent = initials(getName(hero));
+      fallbackEl.style.visibility = 'visible';
+      img.onload = null;
+      img.onerror = null;
+
+      if (hero.portrait) {
+        img.hidden = false;
+        img.src = hero.portrait;
+        img.alt = getName(hero);
+        img.onload = () => {
+          fallbackEl.style.visibility = 'hidden';
+          img.hidden = false;
+        };
+        img.onerror = () => {
+          img.hidden = true;
+          fallbackEl.style.visibility = 'visible';
+        };
+      } else {
+        img.hidden = true;
+        img.removeAttribute('src');
+        img.alt = '';
+      }
+    }
+
+    function renderRoleTabs() {
+      document.querySelectorAll('.role-tab').forEach(btn => {
+        btn.setAttribute('aria-selected', String(btn.dataset.role === selectedRole));
+      });
+      els.tankTabCount.textContent = `${roleHeroes('tank').length}人`;
+      els.damageTabCount.textContent = `${roleHeroes('damage').length}人`;
+      els.supportTabCount.textContent = `${roleHeroes('support').length}人`;
+    }
+
+    function renderHeroGrid() {
+      els.heroGrid.innerHTML = '';
+      const list = roleHeroes();
+      for (const hero of list) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `hero-btn${hero.key === selectedByRole[selectedRole] ? ' active' : ''}`;
+        btn.setAttribute('aria-label', `${getName(hero)}を選択`);
+        btn.setAttribute('title', getName(hero));
+        btn.onclick = () => selectHero(hero.key);
+
+        const thumb = document.createElement('div');
+        thumb.className = 'hero-thumb';
+        const fallback = document.createElement('div');
+        fallback.className = 'thumb-fallback';
+        fallback.textContent = initials(getName(hero));
+        thumb.append(fallback);
+
+        if (hero.portrait) {
+          const img = document.createElement('img');
+          img.alt = '';
+          img.loading = 'lazy';
+          img.decoding = 'async';
+          img.src = hero.portrait;
+          img.onload = () => { fallback.style.visibility = 'hidden'; };
+          img.onerror = () => { img.remove(); fallback.style.visibility = 'visible'; };
+          thumb.append(img);
+        }
+
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        const c = getCount(hero.key);
+        badge.textContent = c;
+        badge.hidden = c === 0;
+
+        // アイコン一覧にはキャラクター名のテキスト要素を置かない
+        btn.append(thumb, badge);
+        els.heroGrid.append(btn);
+      }
+    }
+
+    function renderBreakdown() {
+      const active = roleHeroes()
+        .filter(h => getCount(h.key) > 0)
+        .sort((a, b) => getCount(b.key) - getCount(a.key) || getName(a).localeCompare(getName(b), 'ja'));
+
+      if (!active.length) {
+        els.breakdown.innerHTML = '<div class="breakdown-empty">このロールにはまだカウントがありません。</div>';
+        return;
+      }
+
+      const list = document.createElement('div');
+      list.className = 'breakdown-list';
+      for (const hero of active) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const label = document.createElement('span');
+        label.textContent = getName(hero);
+        const value = document.createElement('strong');
+        value.textContent = getCount(hero.key);
+        row.append(label, value);
+        list.append(row);
+      }
+      els.breakdown.replaceChildren(list);
+    }
+
+    function renderMeta() {
+      const totalHeroes = roster.length;
+      els.rosterStatus.textContent = `${totalHeroes}ヒーロー`;
+      if (!lastSavedAt) {
+        els.lastSave.textContent = '未保存';
+      } else {
+        const d = new Date(lastSavedAt);
+        els.lastSave.textContent = `保存: ${d.toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })}`;
+      }
+    }
+
+    function render() {
+      ensureSelections();
+      const hero = selectedHero();
+      if (!hero) return;
+      const meta = ROLE_META[selectedRole];
+
+      els.selectedName.textContent = getName(hero);
+      els.selectedRoleLabel.textContent = meta.short;
+      els.selectedCount.textContent = getCount(hero.key);
+      els.totalCount.textContent = roleTotal();
+      els.totalLabel.textContent = `${meta.label}合計`;
+      els.allTotal.textContent = `全ロール合計 ${grandTotal()}`;
+      els.listHeading.textContent = meta.label;
+      els.breakdownHeading.textContent = `${meta.label}内訳`;
+      els.heroGrid.setAttribute('aria-label', `${meta.label}一覧`);
+      setupImage(els.selectedPortrait, els.selectedFallback, hero);
+      renderRoleTabs();
+      renderHeroGrid();
+      renderBreakdown();
+      renderMeta();
+    }
+
+    let toastTimer;
+    function showToast(message) {
+      els.toast.textContent = message;
+      els.toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => els.toast.classList.remove('show'), 1800);
+    }
+
+    async function refreshRoster({ quiet = false } = {}) {
+      const button = $('refreshBtn');
+      const original = button.textContent;
+      button.disabled = true;
+      button.textContent = '更新中…';
+      try {
+        const res = await fetch(API_URL, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!Array.isArray(data)) throw new Error('Unexpected response');
+
+        const heroes = data
+          .map(h => ({
+            key: normalizedKey(h.key || h.name),
+            name: h.name || h.key,
+            role: normalizedRole(h.role),
+            portrait: h.portrait || ''
+          }))
+          .filter(h => h.key && h.role);
+
+        if (!heroes.length) throw new Error('No heroes');
+
+        // APIの並びをそのまま利用。各ロール内で名前順になっているためスマホでも探しやすい。
+        roster = heroes;
+        safeStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
+        ensureSelections();
+        els.sourceText.textContent = 'オンライン更新済み';
+        autoSave();
+        render();
+        if (!quiet) showToast(`ヒーロー一覧を更新しました（${roster.length}人）`);
+      } catch (_) {
+        els.sourceText.textContent = loadCachedRoster() ? '保存済み一覧' : 'フォールバック一覧';
+        if (!quiet) showToast('更新できませんでした。端末内の一覧を使用します');
+      } finally {
+        button.disabled = false;
+        button.textContent = original;
+      }
+    }
+
+    function exportJson() {
+      const payload = {
+        app: 'OW Role Counter',
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        counts,
+        selectedRole,
+        selectedByRole
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ow-role-counter-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast('JSONを書き出しました');
+    }
+
+    async function importJson(file) {
+      try {
+        const parsed = JSON.parse(await file.text());
+        if (!parsed || typeof parsed !== 'object' || typeof parsed.counts !== 'object') throw new Error('Invalid');
+        const next = {};
+        for (const [key, val] of Object.entries(parsed.counts)) {
+          const n = Math.max(0, Math.floor(Number(val) || 0));
+          if (n > 0) next[normalizedKey(key)] = n;
+        }
+        counts = next;
+        if (normalizedRole(parsed.selectedRole)) selectedRole = normalizedRole(parsed.selectedRole);
+        if (parsed.selectedByRole && typeof parsed.selectedByRole === 'object') {
+          selectedByRole = { ...selectedByRole, ...parsed.selectedByRole };
+        }
+        ensureSelections();
+        autoSave();
+        render();
+        showToast('データを読み込みました');
+      } catch (_) {
+        showToast('JSONの形式を確認してください');
+      }
+    }
+
+    document.querySelectorAll('.role-tab').forEach(btn => {
+      btn.addEventListener('click', () => switchRole(btn.dataset.role));
+    });
+    $('minusBtn').onclick = () => changeCount(-1);
+    $('plusBtn').onclick = () => changeCount(1);
+    $('saveBtn').onclick = () => save({ toast: true });
+    $('refreshBtn').onclick = () => refreshRoster({ quiet: false });
+    $('exportBtn').onclick = exportJson;
+    $('importBtn').onclick = () => els.importInput.click();
+    els.importInput.onchange = () => {
+      const file = els.importInput.files?.[0];
+      if (file) importJson(file);
+      els.importInput.value = '';
+    };
+    $('resetBtn').onclick = () => {
+      if (!confirm('全ロールのカウントを0に戻しますか？')) return;
+      counts = {};
+      autoSave();
+      render();
+      showToast('全ロールをリセットしました');
+    };
+
+    loadState();
+    ensureSelections();
+    render();
+
+    // オンラインなら起動時に最新の全ロール一覧・ポートレートを確認
+    if (navigator.onLine) refreshRoster({ quiet: true });
+
+  </script>
+</body>
+</html>
