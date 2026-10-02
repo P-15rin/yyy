@@ -1,993 +1,521 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0f131a" />
-  <meta name="description" content="オーバーウォッチのタンク・ダメージ・サポートをロール別に表示し、キャラクターごとのカウントと合計を端末に保存できるスマホ対応Webアプリ" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="OW Counter" />
-  <title>OW Counter Mobile</title>
-  <style>
-    :root {
-      --bg: #0f131a;
-      --panel: #171c25;
-      --panel2: #202735;
-      --text: #f5f7fa;
-      --muted: #aeb8c6;
-      --line: #343d4d;
-      --accent: #f29b38;
-      --accent2: #ffb14c;
-      --danger: #ff6b7b;
-      --success: #49d39d;
-      --shadow: 0 16px 45px rgba(0,0,0,.28);
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-right: env(safe-area-inset-right, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --safe-left: env(safe-area-inset-left, 0px);
-      color-scheme: dark;
-    }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="リンクボード">
+<meta name="theme-color" content="#ECEFF3">
+<title>マイ リンクボード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: a phone-home-screen icon grid, grouped by category, with one add bar on top */
+:root {
+  --bg: #ECEFF3;
+  --surface: #FFFFFF;
+  --fg: #1A2230;
+  --muted: #677385;
+  --line: #D6DCE4;
+  --accent: #2E57E0;
+  --accent-ink: #FFFFFF;
+  --danger: #C23B3B;
+  --shadow: 0 1px 2px rgba(26,34,48,.06), 0 4px 14px rgba(26,34,48,.06);
+  --f-display: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --f-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151B; --surface: #1A2028; --fg: #E7EBF1; --muted: #8D98A8; --line: #2A323D;
+    --accent: #7A98FF; --accent-ink: #0E1320; --danger: #F07A7A;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151B; --surface: #1A2028; --fg: #E7EBF1; --muted: #8D98A8; --line: #2A323D;
+  --accent: #7A98FF; --accent-ink: #0E1320; --danger: #F07A7A;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 22px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: 1.55rem; margin: 0; letter-spacing: .02em; text-wrap: balance; }
+.sync { font-size: .8rem; color: var(--muted); }
+.sync b { font-weight: 500; }
+button { font: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 10px; padding: 8px 14px; font-weight: 500; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.on { border-color: var(--accent); color: var(--accent); }
+.btn.danger { color: var(--danger); }
+.btn.danger.armed { background: var(--danger); color: var(--surface); border-color: var(--danger); }
 
-    * { box-sizing: border-box; }
-    html { min-height: 100%; background: var(--bg); -webkit-text-size-adjust: 100%; }
-    body {
-      margin: 0;
-      min-height: 100dvh;
-      background:
-        radial-gradient(circle at 80% -10%, rgba(242,155,56,.16), transparent 30rem),
-        radial-gradient(circle at -10% 30%, rgba(80,116,184,.11), transparent 27rem),
-        var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
-      padding:
-        max(12px, var(--safe-top))
-        max(12px, var(--safe-right))
-        max(28px, var(--safe-bottom))
-        max(12px, var(--safe-left));
-      overscroll-behavior-y: contain;
-    }
+form.add { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: grid; grid-template-columns: 1fr auto; gap: 8px; box-shadow: var(--shadow); }
+form.add .more { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+input[type="text"], input[type="url"], input[type="password"] { width: 100%; min-width: 0; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
+input::placeholder { color: var(--muted); }
+.msg { font-size: .85rem; color: var(--muted); min-height: 1.2em; margin: 0; }
+.msg.err { color: var(--danger); }
 
-    button, input { font: inherit; }
-    button {
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-      user-select: none;
-    }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 4px 12px; font-size: .85rem; }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 
-    .app { width: min(780px, 100%); margin: 0 auto; }
+section.group { display: grid; gap: 10px; }
+.group h2 { font-size: .78rem; font-weight: 700; letter-spacing: .12em; color: var(--muted); margin: 0; display: flex; gap: 8px; align-items: baseline; }
+.group h2 span { font-weight: 400; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 14px 8px; }
+.tile { position: relative; display: grid; justify-items: center; gap: 6px; text-decoration: none; color: var(--fg); padding: 6px 2px; border-radius: 12px; min-width: 0; }
+.tile:hover .icon { transform: translateY(-2px); }
+.icon { width: 60px; height: 60px; border-radius: 16px; display: grid; place-items: center; overflow: hidden; box-shadow: var(--shadow); transition: transform .15s ease; background: var(--surface); }
+.icon img { width: 100%; height: 100%; object-fit: cover; }
+.mono { width: 100%; height: 100%; display: grid; place-items: center; color: #fff; font-family: var(--f-display); font-size: 1.55rem; line-height: 1; }
+.name { font-size: .8rem; text-align: center; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile.sample { opacity: .55; }
+.icon .fav { width: 62%; height: 62%; object-fit: contain; }
+.keybox { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 8px; box-shadow: var(--shadow); }
+.keybox form { display: flex; gap: 8px; flex-wrap: wrap; }
+.keybox input { flex: 1 1 200px; }
+.keybox p { margin: 0; font-size: .85rem; color: var(--muted); }
+.keybox ol.steps { margin: 0; padding-left: 1.4em; display: grid; gap: 4px; font-size: .88rem; }
+.keybox a { color: var(--accent); font-weight: 700; }
+.keybox code { font-size: .85em; background: var(--bg); padding: 1px 5px; border-radius: 5px; }
+.linkbtn { background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: .8rem; padding: 0; }
+.tag { position: absolute; top: 0; right: 4px; font-size: .62rem; background: var(--muted); color: var(--bg); border-radius: 6px; padding: 0 5px; }
+.editing .tile { cursor: pointer; }
+.editing .tile .icon { outline: 2px dashed var(--accent); outline-offset: 3px; }
+.moves { display: flex; gap: 4px; }
+.moves button { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px; width: 28px; height: 24px; font-size: .75rem; padding: 0; }
+.empty { color: var(--muted); font-size: .9rem; background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; padding: 14px 16px; margin: 0; }
 
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin: 2px 2px 12px;
-    }
-    .title-wrap h1 { margin: 0; font-size: clamp(21px, 5vw, 32px); letter-spacing: -.035em; }
-    .title-wrap p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
-    .status-dot {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      color: var(--muted);
-      font-size: 11px;
-      white-space: nowrap;
-    }
-    .status-dot::before {
-      content: "";
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--success);
-      box-shadow: 0 0 0 4px rgba(73,211,157,.1);
-    }
-
-    .panel {
-      background: rgba(23, 28, 37, .95);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 20px;
-      box-shadow: var(--shadow);
-    }
-
-    .role-tabs-wrap {
-      position: sticky;
-      top: max(7px, var(--safe-top));
-      z-index: 20;
-      margin-bottom: 12px;
-      padding: 4px;
-      border-radius: 16px;
-      background: rgba(15,19,26,.86);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-    }
-    .role-tabs {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 5px;
-      padding: 4px;
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 14px;
-      background: rgba(23,28,37,.92);
-    }
-    .role-tab {
-      min-height: 44px;
-      border: 0;
-      border-radius: 11px;
-      color: var(--muted);
-      background: transparent;
-      font-weight: 800;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .role-tab[aria-selected="true"] {
-      background: var(--accent);
-      color: #1d1308;
-    }
-    .role-tab small {
-      display: block;
-      margin-top: 1px;
-      font-size: 9px;
-      opacity: .72;
-      font-weight: 700;
-    }
-
-    .hero-panel { padding: 14px; }
-    .selected {
-      display: grid;
-      grid-template-columns: 108px minmax(0, 1fr);
-      gap: 14px;
-      align-items: center;
-    }
-    .portrait-wrap {
-      aspect-ratio: 1;
-      border-radius: 17px;
-      overflow: hidden;
-      background: linear-gradient(145deg, #2d3543, #151a22);
-      border: 1px solid rgba(255,255,255,.12);
-      position: relative;
-    }
-    .portrait-wrap img { width: 100%; height: 100%; display: block; object-fit: cover; }
-    .portrait-fallback {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      font-size: 34px;
-      font-weight: 900;
-      color: #dfe5ee;
-    }
-    .selected-info { min-width: 0; }
-    .role-label {
-      display: inline-flex;
-      align-items: center;
-      min-height: 24px;
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: rgba(242,155,56,.13);
-      color: #ffc479;
-      font-size: 10px;
-      font-weight: 850;
-      letter-spacing: .08em;
-    }
-    .selected-name {
-      margin: 7px 0 10px;
-      font-size: clamp(20px, 6vw, 33px);
-      font-weight: 900;
-      line-height: 1.04;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .counter {
-      display: grid;
-      grid-template-columns: 50px minmax(72px, 1fr) 50px;
-      gap: 8px;
-      align-items: center;
-    }
-    .counter button,
-    .counter-value {
-      height: 50px;
-      border-radius: 14px;
-    }
-    .counter button {
-      border: 0;
-      font-size: 27px;
-      font-weight: 600;
-      color: var(--text);
-      background: var(--panel2);
-      cursor: pointer;
-      transition: transform .08s ease, background .15s ease;
-    }
-    .counter button:active { transform: scale(.94); }
-    .counter .plus { background: var(--accent); color: #16110b; font-weight: 900; }
-    .counter-value {
-      display: grid;
-      place-items: center;
-      border: 1px solid var(--line);
-      background: #10151d;
-      font-size: 28px;
-      font-weight: 900;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .section-head {
-      display: flex;
-      align-items: end;
-      justify-content: space-between;
-      gap: 10px;
-      margin: 18px 2px 9px;
-    }
-    .section-head h2 { margin: 0; font-size: 15px; }
-    .section-head span { color: var(--muted); font-size: 11px; }
-
-    .hero-grid {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 7px;
-    }
-    .hero-btn {
-      min-width: 0;
-      aspect-ratio: 1;
-      border: 1px solid rgba(255,255,255,.09);
-      background: var(--panel);
-      color: var(--text);
-      border-radius: 14px;
-      padding: 6px;
-      cursor: pointer;
-      position: relative;
-      overflow: hidden;
-      transition: border-color .15s ease, transform .08s ease, background .15s ease;
-    }
-    .hero-btn:active { transform: scale(.95); }
-    .hero-btn.active {
-      border-color: var(--accent);
-      background: rgba(242,155,56,.11);
-      box-shadow: inset 0 0 0 1px rgba(242,155,56,.22);
-    }
-    .hero-thumb {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      border-radius: 9px;
-      background: #252d3a;
-      position: relative;
-    }
-    .hero-thumb img { width: 100%; height: 100%; display: block; object-fit: cover; }
-    .thumb-fallback {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      font-weight: 900;
-      color: #dce2ea;
-      font-size: clamp(15px, 5vw, 25px);
-    }
-    .badge {
-      position: absolute;
-      right: 4px;
-      top: 4px;
-      min-width: 22px;
-      height: 22px;
-      padding: 0 5px;
-      display: grid;
-      place-items: center;
-      border-radius: 999px;
-      background: var(--accent);
-      color: #191109;
-      font-size: 10px;
-      font-weight: 900;
-      font-variant-numeric: tabular-nums;
-      box-shadow: 0 3px 10px rgba(0,0,0,.35);
-    }
-    .badge[hidden] { display: none; }
-
-    .total-panel {
-      margin-top: 15px;
-      padding: 16px;
-      display: grid;
-      grid-template-columns: 1fr auto;
-      align-items: center;
-      gap: 16px;
-    }
-    .total-label { color: var(--muted); font-size: 12px; }
-    .total-number {
-      font-size: clamp(36px, 10vw, 58px);
-      font-weight: 900;
-      letter-spacing: -.04em;
-      font-variant-numeric: tabular-nums;
-    }
-    .sub-total { margin-top: 4px; color: var(--muted); font-size: 11px; }
-    .last-save { color: var(--muted); font-size: 10px; margin-top: 4px; }
-
-    .actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 9px;
-      margin-top: 14px;
-    }
-    .action-btn {
-      min-height: 48px;
-      border-radius: 13px;
-      border: 1px solid var(--line);
-      background: var(--panel);
-      color: var(--text);
-      cursor: pointer;
-      padding: 10px 12px;
-      font-weight: 750;
-      font-size: 13px;
-    }
-    .action-btn.primary { background: var(--accent); color: #1b1208; border-color: transparent; }
-    .action-btn.danger { color: #ff9ca7; }
-    .action-btn:active { transform: scale(.98); }
-    .action-btn:disabled { opacity: .55; cursor: wait; }
-
-    .breakdown { margin-top: 14px; padding: 16px; }
-    .breakdown h2 { margin: 0 0 10px; font-size: 14px; }
-    .breakdown-empty { color: var(--muted); font-size: 12px; }
-    .breakdown-list { display: grid; gap: 6px; }
-    .row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      background: #111720;
-      font-size: 12px;
-    }
-    .row strong { font-variant-numeric: tabular-nums; }
-
-    .footnote {
-      margin: 16px 4px 0;
-      color: #8893a2;
-      font-size: 10px;
-      line-height: 1.65;
-    }
-    .toast {
-      position: fixed;
-      left: 50%;
-      bottom: max(20px, var(--safe-bottom));
-      transform: translate(-50%, 18px);
-      opacity: 0;
-      pointer-events: none;
-      background: #edf2f7;
-      color: #111722;
-      border-radius: 999px;
-      padding: 10px 14px;
-      font-size: 12px;
-      font-weight: 800;
-      transition: .22s ease;
-      box-shadow: 0 10px 30px rgba(0,0,0,.3);
-      z-index: 50;
-      white-space: nowrap;
-      max-width: calc(100vw - 24px);
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .toast.show { opacity: 1; transform: translate(-50%, 0); }
-    .hidden-input { display: none; }
-
-    @media (max-width: 430px) {
-      .status-dot { display: none; }
-      .selected { grid-template-columns: 96px minmax(0, 1fr); gap: 12px; }
-      .hero-panel { padding: 12px; }
-      .counter { grid-template-columns: 46px minmax(60px, 1fr) 46px; gap: 7px; }
-      .counter button, .counter-value { height: 46px; }
-      .counter button { font-size: 25px; }
-      .counter-value { font-size: 24px; }
-    }
-    @media (max-width: 359px) {
-      .selected { grid-template-columns: 82px minmax(0, 1fr); gap: 10px; }
-      .hero-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .role-tab { font-size: 11px; }
-      .actions { grid-template-columns: 1fr; }
-    }
-    @media (min-width: 600px) {
-      .hero-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 9px; }
-      .selected { grid-template-columns: 124px minmax(0, 1fr); gap: 18px; }
-    }
-  </style>
+.sheet-bg { position: fixed; inset: 0; background: rgba(10,14,20,.45); display: grid; place-items: end center; z-index: 10; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 600px) { .sheet-bg { place-items: center; } }
+.sheet { width: min(440px, 100%); background: var(--surface); color: var(--fg); border-radius: 18px; padding: 18px; display: grid; gap: 12px; box-shadow: var(--shadow); max-height: 90vh; overflow: auto; }
+.sheet h3 { margin: 0; font-size: 1rem; }
+.sheet label { display: grid; gap: 4px; font-size: .8rem; color: var(--muted); }
+.logo-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.logo-row .icon { flex: none; }
+.logo-row .hint { font-size: .78rem; color: var(--muted); flex: 1 1 160px; min-width: 0; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; }
+.row .right { display: flex; gap: 8px; }
+@media (max-width: 480px) { form.add .more { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .icon { transition: none; } }
+</style>
+<style>
+html, body { margin: 0; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+</style>
 </head>
 <body>
-  <main class="app">
-    <div class="topbar">
-      <div class="title-wrap">
-        <h1>OW Role Counter</h1>
-        <p>タップしてすぐ使える・ロール別カウンター</p>
+<div class="wrap" id="app">
+  <header>
+    <div>
+      <h1>マイ リンクボード</h1>
+      <div class="sync" id="sync">読み込み中…</div>
+    </div>
+    <button class="btn" id="editBtn" type="button">並べ替え・編集</button>
+  </header>
+
+  <div class="keybox" id="keyBox" hidden>
+    <p><b>この端末で初めて開いています。</b>リンクを保存する非公開リポジトリ（linkboard）を読み書きするための「鍵」を、端末ごとに1回だけ貼り付けてください。</p>
+    <ol class="steps">
+      <li><a href="https://github.com/settings/personal-access-tokens/new?name=linkboard&amp;description=My+link+board&amp;target_name=P-15rin&amp;expires_in=none&amp;contents=write" target="_blank" rel="noopener">鍵の作成ページを開く</a>（名前や権限は入力済みです）</li>
+      <li>「Repository access」で <b>Only select repositories</b> を選び、<b>linkboard</b> を選ぶ</li>
+      <li>一番下の緑の「Generate token」を押し、表示された <code>github_pat_</code> で始まる文字列をコピー</li>
+      <li>下の欄に貼り付けて「保存」</li>
+    </ol>
+    <form id="keyForm">
+      <input type="password" id="keyInput" placeholder="github_pat_…" autocomplete="off" required>
+      <button class="btn primary" type="submit">保存</button>
+    </form>
+    <p class="msg" id="keyMsg"></p>
+  </div>
+
+  <form class="add" id="addForm" autocomplete="off">
+    <input type="url" id="addUrl" placeholder="URLを貼り付け（例: https://www.youtube.com）" required>
+    <button class="btn primary" type="submit">追加</button>
+    <div class="more">
+      <input type="text" id="addName" placeholder="表示名（空欄なら自動）">
+      <input type="text" id="addCat" placeholder="カテゴリ（例: 仕事・動画・買い物）" list="catList">
+    </div>
+    <datalist id="catList"></datalist>
+    <p class="msg" id="addMsg" style="grid-column:1/-1"></p>
+  </form>
+
+  <div class="chips" id="chips"></div>
+  <div id="groups"></div>
+  <div><button class="linkbtn" id="forgetBtn" type="button">この端末から鍵を消す</button></div>
+</div>
+
+<div class="sheet-bg" id="sheetBg" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <h3 id="sheetTitle">サイトを編集</h3>
+    <div class="logo-row">
+      <div class="icon" id="sheetIcon"></div>
+      <div class="hint">ロゴはサイトから自動で取得します。違う画像にしたいときは、画像を選ぶか、この画面で貼り付けてください。</div>
+    </div>
+    <div class="row" style="justify-content:flex-start">
+      <label class="btn" for="logoFile" style="display:inline-block;color:var(--fg);font-size:.9rem">画像を選ぶ</label>
+      <input type="file" id="logoFile" accept="image/*" hidden>
+      <button class="btn" type="button" id="logoClear">自動ロゴに戻す</button>
+    </div>
+    <label>表示名<input type="text" id="editName"></label>
+    <label>URL<input type="url" id="editUrl"></label>
+    <label>カテゴリ<input type="text" id="editCat" list="catList"></label>
+    <p class="msg" id="editMsg"></p>
+    <div class="row">
+      <button class="btn danger" type="button" id="delBtn">削除</button>
+      <div class="right">
+        <button class="btn" type="button" id="cancelBtn">キャンセル</button>
+        <button class="btn primary" type="button" id="saveBtn">保存</button>
       </div>
-      <div class="status-dot" id="rosterStatus">内蔵一覧</div>
     </div>
+  </div>
+</div>
 
-    <div class="role-tabs-wrap">
-      <nav class="role-tabs" aria-label="ロール切り替え">
-        <button class="role-tab" type="button" data-role="tank" aria-selected="true">タンク<small id="tankTabCount">0</small></button>
-        <button class="role-tab" type="button" data-role="damage" aria-selected="false">ダメージ<small id="damageTabCount">0</small></button>
-        <button class="role-tab" type="button" data-role="support" aria-selected="false">サポート<small id="supportTabCount">0</small></button>
-      </nav>
-    </div>
+<script>
+(function () {
+  const OWNER = "P-15rin", REPO = "linkboard", FILE = "links.json";
+  const API = "https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/" + FILE;
+  const KNOWN = {
+    "youtube.com": "YouTube", "google.com": "Google", "mail.google.com": "Gmail", "drive.google.com": "Google ドライブ",
+    "calendar.google.com": "Google カレンダー", "amazon.co.jp": "Amazon", "amazon.com": "Amazon", "x.com": "X",
+    "twitter.com": "X", "instagram.com": "Instagram", "facebook.com": "Facebook", "yahoo.co.jp": "Yahoo! JAPAN",
+    "rakuten.co.jp": "楽天", "netflix.com": "Netflix", "github.com": "GitHub", "wikipedia.org": "Wikipedia",
+    "nhk.or.jp": "NHK", "note.com": "note", "notion.so": "Notion", "claude.ai": "Claude", "line.me": "LINE",
+    "pixiv.net": "pixiv", "nicovideo.jp": "ニコニコ", "mercari.com": "メルカリ", "tver.jp": "TVer",
+    "spotify.com": "Spotify", "reddit.com": "Reddit", "twitch.tv": "Twitch", "zenn.dev": "Zenn", "qiita.com": "Qiita"
+  };
+  const SAMPLES = [
+    { id: "s1", url: "https://www.youtube.com", cat: "見本", order: 1 },
+    { id: "s2", url: "https://www.amazon.co.jp", cat: "見本", order: 2 },
+    { id: "s3", url: "https://news.yahoo.co.jp", cat: "見本", order: 3 },
+    { id: "s4", url: "https://github.com", cat: "見本", order: 4 }
+  ];
+  const NONE = "未分類";
+  const $ = (id) => document.getElementById(id);
 
-    <section class="panel hero-panel" aria-label="選択中のヒーロー">
-      <div class="selected">
-        <div class="portrait-wrap">
-          <div class="portrait-fallback" id="selectedFallback">D</div>
-          <img id="selectedPortrait" alt="" hidden />
-        </div>
-        <div class="selected-info">
-          <div class="role-label" id="selectedRoleLabel">TANK</div>
-          <div class="selected-name" id="selectedName">D.Va</div>
-          <div class="counter" aria-label="カウント操作">
-            <button class="minus" id="minusBtn" type="button" aria-label="1減らす">−</button>
-            <div class="counter-value" id="selectedCount" aria-live="polite">0</div>
-            <button class="plus" id="plusBtn" type="button" aria-label="1増やす">＋</button>
-          </div>
-        </div>
-      </div>
-    </section>
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
 
-    <div class="section-head">
-      <h2 id="listHeading">タンク</h2>
-      <span id="sourceText">フォールバック一覧</span>
-    </div>
-    <section class="hero-grid" id="heroGrid" aria-label="ヒーロー一覧"></section>
+  let links = [];
+  let loaded = false;
+  let editing = false;
+  let filter = store.get("lb-filter") || "すべて";
+  let current = null;
+  let draftLogo = "";
+  let pass = store.get("lb-token") || "";
+  let sha = null;
+  let saving = Promise.resolve();
 
-    <section class="panel total-panel" aria-label="合計">
-      <div>
-        <div class="total-label" id="totalLabel">タンク合計</div>
-        <div class="sub-total" id="allTotal">全ロール合計 0</div>
-        <div class="last-save" id="lastSave">未保存</div>
-      </div>
-      <div class="total-number" id="totalCount">0</div>
-    </section>
+  // ---------- helpers ----------
+  function normalize(raw) {
+    let s = (raw || "").trim();
+    if (!s) return null;
+    if (!/^https?:\/\//i.test(s)) s = "https://" + s;
+    try { const u = new URL(s); if (!u.hostname.includes(".")) return null; return u.href; } catch (e) { return null; }
+  }
+  function host(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch (e) { return url; } }
+  function autoName(url) {
+    const h = host(url);
+    const parts = h.split(".");
+    for (let i = 0; i < parts.length; i++) { const k = parts.slice(i).join("."); if (KNOWN[k]) return KNOWN[k]; }
+    const sld = ["co", "or", "ne", "ac", "go", "com", "org", "net"];
+    const core = parts.length > 2 && sld.includes(parts[parts.length - 2]) ? parts[parts.length - 3] : (parts[parts.length - 2] || parts[0]);
+    return core ? core.charAt(0).toUpperCase() + core.slice(1) : h;
+  }
+  function displayName(l) { return l.name || autoName(l.url); }
+  function hue(str) { let h = 0; for (const c of str) h = (h * 31 + c.codePointAt(0)) % 360; return h; }
+  function setMsg(id, text, err) { const m = $(id); m.textContent = text || ""; m.classList.toggle("err", !!err); }
+  function setSync(strong, rest) {
+    const el = $("sync"); el.textContent = "";
+    const b = document.createElement("b"); b.textContent = strong; el.append(b, rest || "");
+  }
 
-    <div class="actions">
-      <button class="action-btn primary" id="saveBtn" type="button">保存</button>
-      <button class="action-btn" id="refreshBtn" type="button">ヒーロー情報を更新</button>
-      <button class="action-btn" id="exportBtn" type="button">JSONを書き出す</button>
-      <button class="action-btn" id="importBtn" type="button">JSONを読み込む</button>
-      <button class="action-btn danger" id="resetBtn" type="button">カウントをリセット</button>
-    </div>
-    <input class="hidden-input" type="file" id="importInput" accept="application/json,.json" />
-
-    <section class="panel breakdown">
-      <h2 id="breakdownHeading">タンク内訳</h2>
-      <div id="breakdown"></div>
-    </section>
-
-    <p class="footnote">
-      このHTMLファイル1つだけで起動できます。キャラ一覧はアイコンのみ表示し、名前は選択後の上部パネルと内訳だけに表示します。ブラウザで開いた場合、カウントは端末内に自動保存されます。オンライン時はヒーロー一覧とポートレートを更新し、取得できない場合は内蔵一覧を使用します。
-    </p>
-  </main>
-
-  <div class="toast" id="toast" role="status"></div>
-
-  <script>
-    // 単体HTMLを file:// やアプリ内ブラウザで開いた場合でも、
-    // localStorage が利用不可ならメモリ保存へ自動フォールバックする。
-    const memoryStorage = new Map();
-    const safeStorage = {
-      getItem(key) {
-        try { return window.safeStorage.getItem(key); }
-        catch (_) { return memoryStorage.has(key) ? memoryStorage.get(key) : null; }
-      },
-      setItem(key, value) {
-        try { window.safeStorage.setItem(key, value); }
-        catch (_) { memoryStorage.set(key, String(value)); }
-      },
-      removeItem(key) {
-        try { window.safeStorage.removeItem(key); }
-        catch (_) { memoryStorage.delete(key); }
-      }
-    };
-
-    const FALLBACK_ROSTER = [
-      // Tank (15)
-      { key: 'dmon', name: 'D.Mon', role: 'tank' },
-      { key: 'domina', name: 'Domina', role: 'tank' },
-      { key: 'doomfist', name: 'Doomfist', role: 'tank' },
-      { key: 'dva', name: 'D.Va', role: 'tank' },
-      { key: 'hazard', name: 'Hazard', role: 'tank' },
-      { key: 'junker-queen', name: 'Junker Queen', role: 'tank' },
-      { key: 'mauga', name: 'Mauga', role: 'tank' },
-      { key: 'orisa', name: 'Orisa', role: 'tank' },
-      { key: 'ramattra', name: 'Ramattra', role: 'tank' },
-      { key: 'reinhardt', name: 'Reinhardt', role: 'tank' },
-      { key: 'roadhog', name: 'Roadhog', role: 'tank' },
-      { key: 'sigma', name: 'Sigma', role: 'tank' },
-      { key: 'winston', name: 'Winston', role: 'tank' },
-      { key: 'wrecking-ball', name: 'Wrecking Ball', role: 'tank' },
-      { key: 'zarya', name: 'Zarya', role: 'tank' },
-
-      // Damage (24)
-      { key: 'anran', name: 'Anran', role: 'damage' },
-      { key: 'ashe', name: 'Ashe', role: 'damage' },
-      { key: 'bastion', name: 'Bastion', role: 'damage' },
-      { key: 'cassidy', name: 'Cassidy', role: 'damage' },
-      { key: 'echo', name: 'Echo', role: 'damage' },
-      { key: 'emre', name: 'Emre', role: 'damage' },
-      { key: 'freja', name: 'Freja', role: 'damage' },
-      { key: 'genji', name: 'Genji', role: 'damage' },
-      { key: 'hanzo', name: 'Hanzo', role: 'damage' },
-      { key: 'junkrat', name: 'Junkrat', role: 'damage' },
-      { key: 'mei', name: 'Mei', role: 'damage' },
-      { key: 'pharah', name: 'Pharah', role: 'damage' },
-      { key: 'reaper', name: 'Reaper', role: 'damage' },
-      { key: 'shion', name: 'Shion', role: 'damage' },
-      { key: 'sierra', name: 'Sierra', role: 'damage' },
-      { key: 'sojourn', name: 'Sojourn', role: 'damage' },
-      { key: 'soldier-76', name: 'Soldier: 76', role: 'damage' },
-      { key: 'sombra', name: 'Sombra', role: 'damage' },
-      { key: 'symmetra', name: 'Symmetra', role: 'damage' },
-      { key: 'torbjorn', name: 'Torbjörn', role: 'damage' },
-      { key: 'tracer', name: 'Tracer', role: 'damage' },
-      { key: 'vendetta', name: 'Vendetta', role: 'damage' },
-      { key: 'venture', name: 'Venture', role: 'damage' },
-      { key: 'widowmaker', name: 'Widowmaker', role: 'damage' },
-
-      // Support (14)
-      { key: 'ana', name: 'Ana', role: 'support' },
-      { key: 'baptiste', name: 'Baptiste', role: 'support' },
-      { key: 'brigitte', name: 'Brigitte', role: 'support' },
-      { key: 'illari', name: 'Illari', role: 'support' },
-      { key: 'jetpack-cat', name: 'Jetpack Cat', role: 'support' },
-      { key: 'juno', name: 'Juno', role: 'support' },
-      { key: 'kiriko', name: 'Kiriko', role: 'support' },
-      { key: 'lifeweaver', name: 'Lifeweaver', role: 'support' },
-      { key: 'lucio', name: 'Lúcio', role: 'support' },
-      { key: 'mercy', name: 'Mercy', role: 'support' },
-      { key: 'mizuki', name: 'Mizuki', role: 'support' },
-      { key: 'moira', name: 'Moira', role: 'support' },
-      { key: 'wuyang', name: 'Wuyang', role: 'support' },
-      { key: 'zenyatta', name: 'Zenyatta', role: 'support' }
-    ];
-
-    const JP_NAMES = {
-      dva: 'D.Va', dmon: 'D.Mon', domina: 'ドミナ', doomfist: 'ドゥームフィスト', hazard: 'ハザード',
-      'junker-queen': 'ジャンカー・クイーン', mauga: 'マウガ', orisa: 'オリーサ', ramattra: 'ラマットラ',
-      reinhardt: 'ラインハルト', roadhog: 'ロードホッグ', sigma: 'シグマ', winston: 'ウィンストン',
-      'wrecking-ball': 'レッキング・ボール', zarya: 'ザリア',
-      anran: 'アンラン', ashe: 'アッシュ', bastion: 'バスティオン', cassidy: 'キャスディ', echo: 'エコー',
-      emre: 'エムレ', genji: 'ゲンジ', hanzo: 'ハンゾー', junkrat: 'ジャンクラット', mei: 'メイ',
-      pharah: 'ファラ', reaper: 'リーパー', sojourn: 'ソジョーン', 'soldier-76': 'ソルジャー76',
-      sombra: 'ソンブラ', symmetra: 'シンメトラ', torbjorn: 'トールビョーン', tracer: 'トレーサー',
-      venture: 'ベンチャー', widowmaker: 'ウィドウメイカー',
-      ana: 'アナ', baptiste: 'バティスト', brigitte: 'ブリギッテ', illari: 'イラリー',
-      'jetpack-cat': 'ジェットパック・キャット', juno: 'ジュノ', kiriko: 'キリコ', lifeweaver: 'ライフウィーバー',
-      lucio: 'ルシオ', mercy: 'マーシー', mizuki: 'ミズキ', moira: 'モイラ', wuyang: 'ウーヤン', zenyatta: 'ゼニヤッタ'
-    };
-
-    const ROLE_META = {
-      tank: { label: 'タンク', short: 'TANK' },
-      damage: { label: 'ダメージ', short: 'DAMAGE' },
-      support: { label: 'サポート', short: 'SUPPORT' }
-    };
-
-    const STORAGE_KEY = 'ow-role-counter-v2';
-    const OLD_STORAGE_KEY = 'ow-tank-counter-v1';
-    const ROSTER_KEY = 'ow-role-counter-roster-v2';
-    const API_URL = 'https://overfast-api.tekrop.fr/heroes';
-
-    let roster = loadCachedRoster() || FALLBACK_ROSTER;
-    let selectedRole = 'tank';
-    let selectedByRole = { tank: 'dva', damage: 'tracer', support: 'ana' };
-    let counts = {};
-    let lastSavedAt = null;
-
-    const $ = (id) => document.getElementById(id);
-    const els = {
-      heroGrid: $('heroGrid'),
-      selectedName: $('selectedName'),
-      selectedPortrait: $('selectedPortrait'),
-      selectedFallback: $('selectedFallback'),
-      selectedRoleLabel: $('selectedRoleLabel'),
-      selectedCount: $('selectedCount'),
-      totalCount: $('totalCount'),
-      totalLabel: $('totalLabel'),
-      allTotal: $('allTotal'),
-      breakdown: $('breakdown'),
-      breakdownHeading: $('breakdownHeading'),
-      listHeading: $('listHeading'),
-      lastSave: $('lastSave'),
-      toast: $('toast'),
-      rosterStatus: $('rosterStatus'),
-      sourceText: $('sourceText'),
-      importInput: $('importInput'),
-      tankTabCount: $('tankTabCount'),
-      damageTabCount: $('damageTabCount'),
-      supportTabCount: $('supportTabCount')
-    };
-
-    function normalizedKey(value = '') {
-      return String(value).toLowerCase().trim().replace(/\./g, '').replace(/_/g, '-').replace(/\s+/g, '-');
+  function monogram(l) {
+    const m = document.createElement("div"); m.className = "mono";
+    const h = hue(host(l.url));
+    m.style.background = "linear-gradient(145deg, hsl(" + h + " 62% 52%), hsl(" + ((h + 28) % 360) + " 58% 38%))";
+    m.textContent = Array.from(displayName(l))[0].toUpperCase();
+    return m;
+  }
+  function iconEl(l) {
+    const box = document.createElement("div");
+    box.className = "icon";
+    const img = document.createElement("img");
+    img.alt = ""; img.loading = "lazy"; img.referrerPolicy = "no-referrer";
+    if (l.logo) { img.src = l.logo; }
+    else {
+      img.className = "fav";
+      const sources = [
+        "https://www.google.com/s2/favicons?sz=128&domain=" + encodeURIComponent(host(l.url)),
+        "https://icons.duckduckgo.com/ip3/" + host(l.url) + ".ico"
+      ];
+      let i = 0;
+      img.onload = () => { if (img.naturalWidth <= 16 && i < sources.length - 1) { img.src = sources[++i]; } };
+      img.onerror = () => { if (++i < sources.length) img.src = sources[i]; else box.replaceChildren(monogram(l)); };
+      img.src = sources[0];
     }
+    box.appendChild(img);
+    return box;
+  }
 
-    function normalizedRole(value = '') {
-      const role = String(value).toLowerCase().trim();
-      return ['tank', 'damage', 'support'].includes(role) ? role : '';
-    }
+  // ---------- render ----------
+  function render() {
+    const isSample = !(loaded && links.length);
+    const list = isSample ? SAMPLES : links;
+    const cats = [];
+    list.forEach((l) => { const c = l.cat || NONE; if (!cats.includes(c)) cats.push(c); });
 
-    function initials(name) {
-      if (!name) return '?';
-      if (/^[\x00-\x7FÀ-ÿ]+$/.test(name)) {
-        return name.split(/[\s.:-]+/).filter(Boolean).map(x => x[0]).join('').slice(0, 2).toUpperCase();
-      }
-      return name.slice(0, 1);
-    }
+    $("catList").innerHTML = "";
+    if (!isSample) cats.forEach((c) => { const o = document.createElement("option"); o.value = c; $("catList").appendChild(o); });
 
-    function getName(hero) {
-      return JP_NAMES[normalizedKey(hero.key)] || hero.name || hero.key;
-    }
-
-    function roleHeroes(role = selectedRole) {
-      return roster.filter(h => h.role === role);
-    }
-
-    function loadState() {
-      try {
-        const raw = safeStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed && typeof parsed === 'object') {
-            counts = parsed.counts && typeof parsed.counts === 'object' ? parsed.counts : {};
-            selectedRole = normalizedRole(parsed.selectedRole) || selectedRole;
-            if (parsed.selectedByRole && typeof parsed.selectedByRole === 'object') {
-              selectedByRole = { ...selectedByRole, ...parsed.selectedByRole };
-            }
-            lastSavedAt = parsed.savedAt || null;
-            return;
-          }
-        }
-
-        // v1（タンク専用版）のカウントを自動移行
-        const oldRaw = safeStorage.getItem(OLD_STORAGE_KEY);
-        if (!oldRaw) return;
-        const old = JSON.parse(oldRaw);
-        if (old && typeof old === 'object') {
-          counts = old.counts && typeof old.counts === 'object' ? old.counts : {};
-          if (old.selectedKey) selectedByRole.tank = normalizedKey(old.selectedKey);
-          lastSavedAt = old.savedAt || null;
-        }
-      } catch (_) {}
-    }
-
-    function loadCachedRoster() {
-      try {
-        const raw = safeStorage.getItem(ROSTER_KEY);
-        if (!raw) return null;
-        const data = JSON.parse(raw);
-        if (!Array.isArray(data) || !data.length) return null;
-        const clean = data
-          .map(h => ({
-            key: normalizedKey(h.key || h.name),
-            name: h.name || h.key,
-            role: normalizedRole(h.role),
-            portrait: h.portrait || ''
-          }))
-          .filter(h => h.key && h.role);
-        return clean.length ? clean : null;
-      } catch (_) { return null; }
-    }
-
-    function save({ toast = false } = {}) {
-      const now = new Date().toISOString();
-      lastSavedAt = now;
-      safeStorage.setItem(STORAGE_KEY, JSON.stringify({
-        version: 2,
-        counts,
-        selectedRole,
-        selectedByRole,
-        savedAt: now
-      }));
-      renderMeta();
-      if (toast) showToast('保存しました');
-    }
-
-    function autoSave() { save({ toast: false }); }
-
-    function ensureSelections() {
-      for (const role of Object.keys(ROLE_META)) {
-        const list = roleHeroes(role);
-        if (!list.length) continue;
-        if (!list.some(h => h.key === selectedByRole[role])) selectedByRole[role] = list[0].key;
-      }
-      if (!roleHeroes(selectedRole).length) selectedRole = 'tank';
-    }
-
-    function selectedHero() {
-      const list = roleHeroes(selectedRole);
-      return list.find(h => h.key === selectedByRole[selectedRole]) || list[0] || FALLBACK_ROSTER[0];
-    }
-
-    function getCount(key) {
-      const n = Number(counts[key] || 0);
-      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
-    }
-
-    function changeCount(delta) {
-      const hero = selectedHero();
-      if (!hero) return;
-      counts[hero.key] = Math.max(0, getCount(hero.key) + delta);
-      if (counts[hero.key] === 0) delete counts[hero.key];
-      autoSave();
-      render();
-    }
-
-    function selectHero(key) {
-      selectedByRole[selectedRole] = key;
-      autoSave();
-      render();
-    }
-
-    function switchRole(role) {
-      if (!ROLE_META[role]) return;
-      selectedRole = role;
-      ensureSelections();
-      autoSave();
-      render();
-      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
-    }
-
-    function roleTotal(role = selectedRole) {
-      return roleHeroes(role).reduce((sum, hero) => sum + getCount(hero.key), 0);
-    }
-
-    function grandTotal() {
-      return roster.reduce((sum, hero) => sum + getCount(hero.key), 0);
-    }
-
-    function setupImage(img, fallbackEl, hero) {
-      fallbackEl.textContent = initials(getName(hero));
-      fallbackEl.style.visibility = 'visible';
-      img.onload = null;
-      img.onerror = null;
-
-      if (hero.portrait) {
-        img.hidden = false;
-        img.src = hero.portrait;
-        img.alt = getName(hero);
-        img.onload = () => {
-          fallbackEl.style.visibility = 'hidden';
-          img.hidden = false;
-        };
-        img.onerror = () => {
-          img.hidden = true;
-          fallbackEl.style.visibility = 'visible';
-        };
-      } else {
-        img.hidden = true;
-        img.removeAttribute('src');
-        img.alt = '';
-      }
-    }
-
-    function renderRoleTabs() {
-      document.querySelectorAll('.role-tab').forEach(btn => {
-        btn.setAttribute('aria-selected', String(btn.dataset.role === selectedRole));
+    if (filter !== "すべて" && !cats.includes(filter)) filter = "すべて";
+    const chips = $("chips"); chips.innerHTML = "";
+    if (!isSample && cats.length > 1) {
+      ["すべて"].concat(cats).forEach((c) => {
+        const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = c;
+        b.setAttribute("aria-pressed", String(filter === c));
+        b.onclick = () => { filter = c; store.set("lb-filter", c); render(); };
+        chips.appendChild(b);
       });
-      els.tankTabCount.textContent = `${roleHeroes('tank').length}人`;
-      els.damageTabCount.textContent = `${roleHeroes('damage').length}人`;
-      els.supportTabCount.textContent = `${roleHeroes('support').length}人`;
     }
 
-    function renderHeroGrid() {
-      els.heroGrid.innerHTML = '';
-      const list = roleHeroes();
-      for (const hero of list) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = `hero-btn${hero.key === selectedByRole[selectedRole] ? ' active' : ''}`;
-        btn.setAttribute('aria-label', `${getName(hero)}を選択`);
-        btn.setAttribute('title', getName(hero));
-        btn.onclick = () => selectHero(hero.key);
-
-        const thumb = document.createElement('div');
-        thumb.className = 'hero-thumb';
-        const fallback = document.createElement('div');
-        fallback.className = 'thumb-fallback';
-        fallback.textContent = initials(getName(hero));
-        thumb.append(fallback);
-
-        if (hero.portrait) {
-          const img = document.createElement('img');
-          img.alt = '';
-          img.loading = 'lazy';
-          img.decoding = 'async';
-          img.src = hero.portrait;
-          img.onload = () => { fallback.style.visibility = 'hidden'; };
-          img.onerror = () => { img.remove(); fallback.style.visibility = 'visible'; };
-          thumb.append(img);
+    const groups = $("groups"); groups.innerHTML = "";
+    groups.className = editing ? "editing" : "";
+    if (isSample) {
+      const p = document.createElement("p"); p.className = "empty";
+      p.textContent = loaded
+        ? "下は見本です。上の欄にURLを貼って追加すると、見本は消えてあなたのリンクだけになります。"
+        : "リンクを読み込んでいます。表示されるまでは見本を出しています。";
+      groups.appendChild(p);
+    }
+    cats.filter((c) => filter === "すべて" || c === filter).forEach((c) => {
+      const items = list.filter((l) => (l.cat || NONE) === c).sort((a, b) => (a.order || 0) - (b.order || 0));
+      const sec = document.createElement("section"); sec.className = "group";
+      const h = document.createElement("h2"); h.textContent = c;
+      const n = document.createElement("span"); n.textContent = items.length + "件"; h.appendChild(n);
+      const grid = document.createElement("div"); grid.className = "grid";
+      items.forEach((l, i) => {
+        const asLink = !(editing && !isSample);
+        const a = document.createElement(asLink ? "a" : "div");
+        a.className = "tile" + (isSample ? " sample" : "");
+        if (asLink) { a.href = l.url; a.target = "_blank"; a.rel = "noopener"; a.title = l.url; }
+        else {
+          a.tabIndex = 0; a.setAttribute("role", "button");
+          a.onclick = (e) => { if (!e.target.closest(".moves")) openSheet(l); };
+          a.onkeydown = (e) => { if (e.key === "Enter") openSheet(l); };
         }
-
-        const badge = document.createElement('span');
-        badge.className = 'badge';
-        const c = getCount(hero.key);
-        badge.textContent = c;
-        badge.hidden = c === 0;
-
-        // アイコン一覧にはキャラクター名のテキスト要素を置かない
-        btn.append(thumb, badge);
-        els.heroGrid.append(btn);
-      }
-    }
-
-    function renderBreakdown() {
-      const active = roleHeroes()
-        .filter(h => getCount(h.key) > 0)
-        .sort((a, b) => getCount(b.key) - getCount(a.key) || getName(a).localeCompare(getName(b), 'ja'));
-
-      if (!active.length) {
-        els.breakdown.innerHTML = '<div class="breakdown-empty">このロールにはまだカウントがありません。</div>';
-        return;
-      }
-
-      const list = document.createElement('div');
-      list.className = 'breakdown-list';
-      for (const hero of active) {
-        const row = document.createElement('div');
-        row.className = 'row';
-        const label = document.createElement('span');
-        label.textContent = getName(hero);
-        const value = document.createElement('strong');
-        value.textContent = getCount(hero.key);
-        row.append(label, value);
-        list.append(row);
-      }
-      els.breakdown.replaceChildren(list);
-    }
-
-    function renderMeta() {
-      const totalHeroes = roster.length;
-      els.rosterStatus.textContent = `${totalHeroes}ヒーロー`;
-      if (!lastSavedAt) {
-        els.lastSave.textContent = '未保存';
-      } else {
-        const d = new Date(lastSavedAt);
-        els.lastSave.textContent = `保存: ${d.toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })}`;
-      }
-    }
-
-    function render() {
-      ensureSelections();
-      const hero = selectedHero();
-      if (!hero) return;
-      const meta = ROLE_META[selectedRole];
-
-      els.selectedName.textContent = getName(hero);
-      els.selectedRoleLabel.textContent = meta.short;
-      els.selectedCount.textContent = getCount(hero.key);
-      els.totalCount.textContent = roleTotal();
-      els.totalLabel.textContent = `${meta.label}合計`;
-      els.allTotal.textContent = `全ロール合計 ${grandTotal()}`;
-      els.listHeading.textContent = meta.label;
-      els.breakdownHeading.textContent = `${meta.label}内訳`;
-      els.heroGrid.setAttribute('aria-label', `${meta.label}一覧`);
-      setupImage(els.selectedPortrait, els.selectedFallback, hero);
-      renderRoleTabs();
-      renderHeroGrid();
-      renderBreakdown();
-      renderMeta();
-    }
-
-    let toastTimer;
-    function showToast(message) {
-      els.toast.textContent = message;
-      els.toast.classList.add('show');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => els.toast.classList.remove('show'), 1800);
-    }
-
-    async function refreshRoster({ quiet = false } = {}) {
-      const button = $('refreshBtn');
-      const original = button.textContent;
-      button.disabled = true;
-      button.textContent = '更新中…';
-      try {
-        const res = await fetch(API_URL, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (!Array.isArray(data)) throw new Error('Unexpected response');
-
-        const heroes = data
-          .map(h => ({
-            key: normalizedKey(h.key || h.name),
-            name: h.name || h.key,
-            role: normalizedRole(h.role),
-            portrait: h.portrait || ''
-          }))
-          .filter(h => h.key && h.role);
-
-        if (!heroes.length) throw new Error('No heroes');
-
-        // APIの並びをそのまま利用。各ロール内で名前順になっているためスマホでも探しやすい。
-        roster = heroes;
-        safeStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
-        ensureSelections();
-        els.sourceText.textContent = 'オンライン更新済み';
-        autoSave();
-        render();
-        if (!quiet) showToast(`ヒーロー一覧を更新しました（${roster.length}人）`);
-      } catch (_) {
-        els.sourceText.textContent = loadCachedRoster() ? '保存済み一覧' : 'フォールバック一覧';
-        if (!quiet) showToast('更新できませんでした。端末内の一覧を使用します');
-      } finally {
-        button.disabled = false;
-        button.textContent = original;
-      }
-    }
-
-    function exportJson() {
-      const payload = {
-        app: 'OW Role Counter',
-        version: 2,
-        exportedAt: new Date().toISOString(),
-        counts,
-        selectedRole,
-        selectedByRole
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ow-role-counter-${new Date().toISOString().slice(0,10)}.json`;
-      document.body.append(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      showToast('JSONを書き出しました');
-    }
-
-    async function importJson(file) {
-      try {
-        const parsed = JSON.parse(await file.text());
-        if (!parsed || typeof parsed !== 'object' || typeof parsed.counts !== 'object') throw new Error('Invalid');
-        const next = {};
-        for (const [key, val] of Object.entries(parsed.counts)) {
-          const n = Math.max(0, Math.floor(Number(val) || 0));
-          if (n > 0) next[normalizedKey(key)] = n;
+        a.appendChild(iconEl(l));
+        const nm = document.createElement("div"); nm.className = "name"; nm.textContent = displayName(l); a.appendChild(nm);
+        if (isSample) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "見本"; a.appendChild(t); }
+        if (!asLink) {
+          const mv = document.createElement("div"); mv.className = "moves";
+          const lb = document.createElement("button"); lb.type = "button"; lb.textContent = "←"; lb.setAttribute("aria-label", "前へ"); lb.disabled = i === 0;
+          const rb = document.createElement("button"); rb.type = "button"; rb.textContent = "→"; rb.setAttribute("aria-label", "後ろへ"); rb.disabled = i === items.length - 1;
+          lb.onclick = () => swap(l, items[i - 1]); rb.onclick = () => swap(l, items[i + 1]);
+          mv.append(lb, rb); a.appendChild(mv);
         }
-        counts = next;
-        if (normalizedRole(parsed.selectedRole)) selectedRole = normalizedRole(parsed.selectedRole);
-        if (parsed.selectedByRole && typeof parsed.selectedByRole === 'object') {
-          selectedByRole = { ...selectedByRole, ...parsed.selectedByRole };
-        }
-        ensureSelections();
-        autoSave();
-        render();
-        showToast('データを読み込みました');
-      } catch (_) {
-        showToast('JSONの形式を確認してください');
-      }
-    }
-
-    document.querySelectorAll('.role-tab').forEach(btn => {
-      btn.addEventListener('click', () => switchRole(btn.dataset.role));
+        grid.appendChild(a);
+      });
+      sec.append(h, grid); groups.appendChild(sec);
     });
-    $('minusBtn').onclick = () => changeCount(-1);
-    $('plusBtn').onclick = () => changeCount(1);
-    $('saveBtn').onclick = () => save({ toast: true });
-    $('refreshBtn').onclick = () => refreshRoster({ quiet: false });
-    $('exportBtn').onclick = exportJson;
-    $('importBtn').onclick = () => els.importInput.click();
-    els.importInput.onchange = () => {
-      const file = els.importInput.files?.[0];
-      if (file) importJson(file);
-      els.importInput.value = '';
-    };
-    $('resetBtn').onclick = () => {
-      if (!confirm('全ロールのカウントを0に戻しますか？')) return;
-      counts = {};
-      autoSave();
+    $("editBtn").classList.toggle("on", editing);
+    $("editBtn").textContent = editing ? "編集を終わる" : "並べ替え・編集";
+    $("editBtn").hidden = isSample;
+  }
+
+  // ---------- GitHub storage ----------
+  function toB64(str) { const bytes = new TextEncoder().encode(str); let bin = ""; bytes.forEach((b) => { bin += String.fromCharCode(b); }); return btoa(bin); }
+  function fromB64(b64) { const bin = atob(b64.replace(/\s/g, "")); return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))); }
+  function ghError(status) {
+    if (status === 401) return "鍵が無効です。期限切れか、コピーが途中で切れている可能性があります";
+    if (status === 403) return "鍵に書き込みの権限がありません。作成時に linkboard を選んだか確認してください";
+    if (status === 404) return "linkboard リポジトリが見つかりません。鍵の作成時に linkboard を選んだか確認してください";
+    return "通信エラー（" + status + "）";
+  }
+  async function gh(method, body) {
+    const res = await fetch(API + (method === "GET" ? "?t=" + Date.now() : ""), {
+      method,
+      headers: { "Authorization": "Bearer " + pass, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store"
+    });
+    let data = null; try { data = await res.json(); } catch (e) {}
+    if (!res.ok) { const err = new Error(ghError(res.status)); err.status = res.status; throw err; }
+    return data;
+  }
+  async function readRemote() {
+    try {
+      const d = await gh("GET");
+      sha = d.sha;
+      const parsed = JSON.parse(fromB64(d.content || "") || "{}");
+      return Array.isArray(parsed.links) ? parsed.links : [];
+    } catch (e) { throw e; }
+  }
+  async function writeRemote(list) {
+    const text = JSON.stringify({ links: list }, null, 1);
+    if (text.length > 900000) throw new Error("データが大きすぎます。差し替えたロゴ画像をいくつか自動ロゴに戻してください");
+    const body = { message: "リンクを更新", content: toB64(text) };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (sha) body.sha = sha; else delete body.sha;
+      try { const r = await gh("PUT", body); sha = r.content.sha; return; }
+      catch (e) {
+        if ((e.status === 409 || e.status === 422) && attempt === 0) { try { await readRemote(); } catch (x) {} continue; }
+        throw e;
+      }
+    }
+  }
+
+  async function pull(quiet) {
+    if (!pass) { showKey(); return; }
+    if (!quiet) setSync("読み込み中…");
+    try {
+      links = await readRemote();
+      loaded = true;
+      store.set("lb-cache", JSON.stringify(links));
+      $("keyBox").hidden = true;
+      setSync("同期中", "：WindowsでもiPhoneでも同じリンクが表示されます");
       render();
-      showToast('全ロールをリセットしました');
-    };
+    } catch (e) {
+      if (e.status === 401) { pass = ""; store.del("lb-token"); showKey(e.message + "。もう一度作り直して貼り付けてください。"); }
+      else if (e.status === 403 || e.status === 404) { showKey(e.message + "。"); }
+      else setSync("オフライン", "：前回の内容を表示しています（" + e.message + "）");
+    }
+  }
 
-    loadState();
-    ensureSelections();
+  function push() {
+    store.set("lb-cache", JSON.stringify(links));
     render();
+    const snapshot = JSON.parse(JSON.stringify(links));
+    const job = saving.then(() => writeRemote(snapshot));
+    saving = job.catch(() => {});
+    return job.then(
+      () => setSync("同期中", "：保存しました"),
+      (e) => { setSync("保存できませんでした", "：" + e.message + "。"); throw e; }
+    );
+  }
 
-    // オンラインなら起動時に最新の全ロール一覧・ポートレートを確認
-    if (navigator.onLine) refreshRoster({ quiet: true });
+  function showKey(msg) {
+    $("keyBox").hidden = false; setMsg("keyMsg", msg || "", !!msg);
+    setSync("鍵の設定が必要です");
+  }
+  $("keyForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    pass = $("keyInput").value.trim();
+    if (!pass) return;
+    store.set("lb-token", pass); $("keyInput").value = "";
+    pull();
+  });
+  $("forgetBtn").onclick = () => { pass = ""; sha = null; store.del("lb-token"); store.del("lb-cache"); links = []; loaded = false; render(); showKey(); };
 
-  </script>
+  // ---------- actions ----------
+  function newId() { return "l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  async function swap(a, b) {
+    if (!b) return;
+    const oa = a.order || 0, ob = b.order || 0;
+    a.order = ob === oa ? oa + 1 : ob; b.order = oa;
+    try { await push(); } catch (e) {}
+  }
+
+  $("addForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!pass) { showKey(); return; }
+    const url = normalize($("addUrl").value);
+    if (!url) { setMsg("addMsg", "URLの形が正しくありません。https:// から始まるアドレスを貼り付けてください。", true); return; }
+    if (links.some((l) => l.url === url)) { setMsg("addMsg", "このURLはすでに登録されています。", true); return; }
+    const max = links.reduce((m, l) => Math.max(m, l.order || 0), 0);
+    const l = { id: newId(), url, name: $("addName").value.trim(), cat: $("addCat").value.trim(), logo: "", order: max + 1 };
+    links.push(l); loaded = true;
+    $("addUrl").value = ""; $("addName").value = "";
+    setMsg("addMsg", "「" + displayName(l) + "」を追加しました。");
+    try { await push(); } catch (err) { setMsg("addMsg", "サーバーに保存できませんでした。", true); }
+  });
+
+  $("editBtn").onclick = () => { editing = !editing; render(); };
+
+  function paintSheetIcon() {
+    const tmp = iconEl({ url: normalize($("editUrl").value) || current.url, name: $("editName").value.trim(), logo: draftLogo });
+    $("sheetIcon").replaceChildren(...tmp.childNodes);
+  }
+  function openSheet(l) {
+    current = l; draftLogo = l.logo || "";
+    $("editName").value = l.name || ""; $("editName").placeholder = autoName(l.url);
+    $("editUrl").value = l.url; $("editCat").value = l.cat || "";
+    setMsg("editMsg", ""); disarm(); paintSheetIcon();
+    $("sheetBg").hidden = false; $("editName").focus();
+  }
+  function closeSheet() { $("sheetBg").hidden = true; current = null; }
+  $("cancelBtn").onclick = closeSheet;
+  $("sheetBg").addEventListener("click", (e) => { if (e.target === $("sheetBg")) closeSheet(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("sheetBg").hidden) closeSheet(); });
+  let iconTimer = null;
+  ["editName", "editUrl"].forEach((id) => $(id).addEventListener("input", () => { clearTimeout(iconTimer); iconTimer = setTimeout(paintSheetIcon, 400); }));
+
+  function shrink(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const S = 128, c = document.createElement("canvas"); c.width = S; c.height = S;
+          const g = c.getContext("2d"); const k = Math.max(S / img.width, S / img.height);
+          const w = img.width * k, h = img.height * k; g.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);
+          resolve(c.toDataURL("image/png"));
+        };
+        img.onerror = reject; img.src = r.result;
+      };
+      r.onerror = reject; r.readAsDataURL(file);
+    });
+  }
+  async function takeImage(file) {
+    if (!file || !file.type.startsWith("image/")) { setMsg("editMsg", "画像ファイルを選んでください。", true); return; }
+    try { draftLogo = await shrink(file); paintSheetIcon(); setMsg("editMsg", "ロゴを差し替えました。保存すると反映されます。"); }
+    catch (e) { setMsg("editMsg", "この画像は読み込めませんでした。PNGかJPEGでお試しください。", true); }
+  }
+  $("logoFile").addEventListener("change", (e) => { takeImage(e.target.files[0]); e.target.value = ""; });
+  $("logoClear").onclick = () => { draftLogo = ""; paintSheetIcon(); };
+  document.addEventListener("paste", (e) => {
+    if ($("sheetBg").hidden) return;
+    const item = Array.from(e.clipboardData ? e.clipboardData.items : []).find((i) => i.type.startsWith("image/"));
+    if (item) { e.preventDefault(); takeImage(item.getAsFile()); }
+  });
+
+  $("saveBtn").onclick = async () => {
+    const url = normalize($("editUrl").value);
+    if (!url) { setMsg("editMsg", "URLの形が正しくありません。", true); return; }
+    Object.assign(current, { url, name: $("editName").value.trim(), cat: $("editCat").value.trim(), logo: draftLogo });
+    closeSheet();
+    try { await push(); } catch (e) {}
+  };
+
+  let armTimer = null;
+  function disarm() { const b = $("delBtn"); b.classList.remove("armed"); b.textContent = "削除"; clearTimeout(armTimer); }
+  $("delBtn").onclick = async () => {
+    const b = $("delBtn");
+    if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = "本当に削除"; armTimer = setTimeout(disarm, 4000); return; }
+    const target = current;
+    links = links.filter((x) => x !== target);
+    closeSheet();
+    try { await push(); } catch (e) {}
+  };
+
+  // ---------- boot ----------
+  try { const c = JSON.parse(store.get("lb-cache") || "null"); if (Array.isArray(c)) { links = c; loaded = true; } } catch (e) {}
+  render();
+  pull();
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && pass && $("sheetBg").hidden) pull(true); });
+})();
+</script>
 </body>
 </html>
