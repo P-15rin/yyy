@@ -44,7 +44,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font
 .wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 22px; }
 header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 h1 { font-family: var(--f-display); font-weight: 400; font-size: 1.55rem; margin: 0; letter-spacing: .02em; text-wrap: balance; }
-.sync { font-size: .8rem; color: var(--muted); }
+.sync { font-size: .8rem; color: var(--muted); min-height: 1.3em; }
 .sync b { font-weight: 500; }
 button { font: inherit; cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -150,7 +150,7 @@ img { max-width: 100%; }
 
   <div class="chips" id="chips"></div>
   <div id="groups"></div>
-  <div><button class="linkbtn" id="forgetBtn" type="button">この端末から鍵を消す</button></div>
+  <div><button class="linkbtn" id="forgetBtn" type="button" hidden>この端末から鍵を消す</button></div>
 </div>
 
 <div class="sheet-bg" id="sheetBg" hidden>
@@ -236,8 +236,10 @@ img { max-width: 100%; }
   function displayName(l) { return l.name || autoName(l.url); }
   function hue(str) { let h = 0; for (const c of str) h = (h * 31 + c.codePointAt(0)) % 360; return h; }
   function setMsg(id, text, err) { const m = $(id); m.textContent = text || ""; m.classList.toggle("err", !!err); }
-  function setSync(strong, rest) {
-    const el = $("sync"); el.textContent = "";
+  let syncTimer = null;
+  function setSync(strong, rest, fade) {
+    const el = $("sync"); el.textContent = ""; clearTimeout(syncTimer);
+    if (fade) syncTimer = setTimeout(() => { el.textContent = ""; }, 3000);
     const b = document.createElement("b"); b.textContent = strong; el.append(b, rest || "");
   }
 
@@ -384,7 +386,8 @@ img { max-width: 100%; }
       loaded = true;
       store.set("lb-cache", JSON.stringify(links));
       $("keyBox").hidden = true;
-      setSync("同期中", "：WindowsでもiPhoneでも同じリンクが表示されます");
+      setSync("同期しました", "", true);
+      $("forgetBtn").hidden = false;
       render();
     } catch (e) {
       if (e.status === 401) { pass = ""; store.del("lb-token"); showKey(e.message + "。もう一度作り直して貼り付けてください。"); }
@@ -400,7 +403,7 @@ img { max-width: 100%; }
     const job = saving.then(() => writeRemote(snapshot));
     saving = job.catch(() => {});
     return job.then(
-      () => setSync("同期中", "：保存しました"),
+      () => setSync("保存しました", "", true),
       (e) => { setSync("保存できませんでした", "：" + e.message + "。"); throw e; }
     );
   }
@@ -414,9 +417,10 @@ img { max-width: 100%; }
     pass = $("keyInput").value.trim();
     if (!pass) return;
     store.set("lb-token", pass); $("keyInput").value = "";
+    $("keyBox").hidden = true; setMsg("keyMsg", "");
     pull();
   });
-  $("forgetBtn").onclick = () => { pass = ""; sha = null; store.del("lb-token"); store.del("lb-cache"); links = []; loaded = false; render(); showKey(); };
+  $("forgetBtn").onclick = () => { pass = ""; sha = null; store.del("lb-token"); store.del("lb-cache"); links = []; loaded = false; $("forgetBtn").hidden = true; render(); showKey(); };
 
   // ---------- actions ----------
   function newId() { return "l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
