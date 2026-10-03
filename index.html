@@ -64,6 +64,10 @@ input::placeholder { color: var(--muted); }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 4px 12px; font-size: .85rem; }
 .chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.picks { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.picks::before { content: "これまでのカテゴリ："; font-size: .78rem; color: var(--muted); }
+.pick { border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 999px; padding: 3px 11px; font-size: .82rem; }
+.pick[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
 section.group { display: grid; gap: 10px; }
 .group h2 { font-size: .78rem; font-weight: 700; letter-spacing: .12em; color: var(--muted); margin: 0; display: flex; gap: 8px; align-items: baseline; }
@@ -144,6 +148,7 @@ img { max-width: 100%; }
       <input type="text" id="addName" placeholder="表示名（空欄なら自動）">
       <input type="text" id="addCat" placeholder="カテゴリ（例: 仕事・動画・買い物）" list="catList">
     </div>
+    <div class="picks" id="addPicks" style="grid-column:1/-1" hidden></div>
     <datalist id="catList"></datalist>
     <p class="msg" id="addMsg" style="grid-column:1/-1"></p>
   </form>
@@ -168,6 +173,7 @@ img { max-width: 100%; }
     <label>表示名<input type="text" id="editName"></label>
     <label>URL<input type="url" id="editUrl"></label>
     <label>カテゴリ<input type="text" id="editCat" list="catList"></label>
+    <div class="picks" id="editPicks" hidden></div>
     <p class="msg" id="editMsg"></p>
     <div class="row">
       <button class="btn danger" type="button" id="delBtn">削除</button>
@@ -280,6 +286,8 @@ img { max-width: 100%; }
 
     $("catList").innerHTML = "";
     if (!isSample) cats.forEach((c) => { const o = document.createElement("option"); o.value = c; $("catList").appendChild(o); });
+    knownCats = isSample ? [] : cats.filter((c) => c !== NONE);
+    renderPicks("addPicks", "addCat");
 
     if (filter !== "すべて" && !cats.includes(filter)) filter = "すべて";
     const chips = $("chips"); chips.innerHTML = "";
@@ -452,10 +460,24 @@ img { max-width: 100%; }
     const tmp = iconEl({ url: normalize($("editUrl").value) || current.url, name: $("editName").value.trim(), logo: draftLogo });
     $("sheetIcon").replaceChildren(...tmp.childNodes);
   }
+  let knownCats = [];
+  function renderPicks(boxId, inputId) {
+    const box = $(boxId), input = $(inputId);
+    box.innerHTML = ""; box.hidden = !knownCats.length;
+    knownCats.forEach((c) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "pick"; b.textContent = c;
+      b.setAttribute("aria-pressed", String(input.value.trim() === c));
+      b.onclick = () => { input.value = input.value.trim() === c ? "" : c; renderPicks(boxId, inputId); };
+      box.appendChild(b);
+    });
+  }
+  $("addCat").addEventListener("input", () => renderPicks("addPicks", "addCat"));
+  $("editCat").addEventListener("input", () => renderPicks("editPicks", "editCat"));
+
   function openSheet(l) {
     current = l; draftLogo = l.logo || "";
     $("editName").value = l.name || ""; $("editName").placeholder = autoName(l.url);
-    $("editUrl").value = l.url; $("editCat").value = l.cat || "";
+    $("editUrl").value = l.url; $("editCat").value = l.cat || ""; renderPicks("editPicks", "editCat");
     setMsg("editMsg", ""); disarm(); paintSheetIcon();
     $("sheetBg").hidden = false; $("editName").focus();
   }
